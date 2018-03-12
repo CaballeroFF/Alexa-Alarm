@@ -1,0 +1,54 @@
+{
+  "languageModel": {
+    "intents": [
+      {
+        "name": "AMAZON.CancelIntent",
+        "samples": []
+      },
+      {
+        "name": "AMAZON.HelpIntent",
+        "samples": []
+      },
+      {
+        "name": "AMAZON.StopIntent",
+        "samples": []
+      },
+      {
+        "name": "NoIntent",
+        "samples": [
+          "stop",
+          "nope",
+          "no",
+          "please stop"
+        ],
+        "slots": []
+      },
+      {
+        "name": "YesIntent",
+        "samples": [
+          "for {atime}",
+          "set alarm for {atime}",
+          "set alarm to {atime}",
+          "set alarm {atime}",
+          "set alarm at {atime}",
+          "yeah",
+          "sure",
+          "yes",
+          "set alarm to {atime} {adate}",
+          "set alarm to {atime} on {adate}"
+        ],
+        "slots": [
+          {
+            "name": "atime",
+            "type": "AMAZON.TIME"
+          },
+          {
+            "name": "adate",
+            "type": "AMAZON.DATE"
+          }
+        ]
+      }
+    ],
+    "invocationName": "light"
+  }
+}
