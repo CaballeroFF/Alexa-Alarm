@@ -131,16 +131,25 @@ def no_intent(atime):
     global dct
     
     update_dct()
+	bye_msg = ''
+    analarm = False
     
     print('\nactive child process: ', multiprocessing.active_children())
     parent = psutil.Process(os.getpid())
+	
+	for key in dct:
+    	print(key)
+    	if key == atime:
+        	print(key, True)
+        	analarm = True
+			
     for child in parent.children(recursive=True):
         print('child...... ', child)
-	if not dct or atime is None:
+    if not dct or atime is None:
 		print('ok........')
 		print('Dictionary ...........', dct)
 		bye_msg = 'alarms are empty.'
-	elif atime not in dct:
+	elif not analarm:
 		d = datetime.strptime(atime, '%H:%M')
 		bye_msg = '{} is not in your alarms'.format(d.strftime("%I:%M %p"))
 	else:
