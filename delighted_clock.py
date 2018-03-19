@@ -1,38 +1,67 @@
 import sys
 import time
+import datetime
 from pygame import mixer
-import alarm_leds as led
+import delight_leds as dl
 import threading
-import RPi.GPIO as GPIO
-#added for date function
-from datetime import date
 
 
-ir = 16
+def parse_duration(dstr):
+    time_type = ''
+    t_index = dstr.index('T')
+    for i, elem in enumerate(dstr):
+        if elem != 'P' and elem != 'T':
+            if elem.isnumeric():
+                time_type += elem
+            if elem.isalpha() and len(dstr) - 1 != i:
+                if elem == 'M' and i >= t_index:
+                    time_type += elem.lower() + ' '
+                else:
+                    time_type += elem + ' '
+            if len(dstr) - 1 == i:
+                if elem == 'M' and i >= t_index:
+                    time_type += elem.lower()
+                else:
+                    time_type += elem
+    duration = time_type.split(' ')
+    return duration
 
-GPIO.setmode(GPIO.BCM) 
 
-#defining the pins as output/inputs
-GPIO.setup(ir, GPIO.IN)
+def duration_to_minute(dstr):
+    dlist = parse_duration(dstr)
+    year = 0
+    month = 0
+    week = 0
+    day = 0
+    hour = 0
+    minute = 0
+    for i, elem in enumerate(dlist):
+        if 'Y' in elem:
+            year = int(elem[:-1]) * 525600
+        if 'M' in elem:
+            month = int(elem[:-1]) * 43800
+        if 'W' in elem:
+            week = int(elem[:-1]) * 10078
+        if 'D' in elem:
+            day = int(elem[:-1]) * 1440
+        if 'H' in elem:
+            hour = int(elem[:-1]) * 60
+        if 'm' in elem:
+            minute = int(elem[:-1])
+    minutes = year + month + week + day + hour + minute
+    return minutes
 
-def ampm():
+
+def alarm_duration(aduration):
     ctime = time.localtime()
-    if int(ctime.tm_hour) < 12:
-        return ' AM'
-    return ' PM'
+    dt = datetime.datetime.fromtimestamp(time.mktime(ctime))
+    c = dt + datetime.timedelta(minutes=duration_to_minute(aduration))
+    adate = str(c.date())
+    atime = str(c.hour) + ':' + str(c.minute)
 
+    #set_alarm(atime, adate)
+    return atime, adate
 
-def in_a_minute(alarm=False):
-    ctime = time.localtime()
-    minute = ctime.tm_min + 1
-    if int(minute) < 10:
-        minute = '0' + str(minute)
-    timestr = str(ctime.tm_hour) + ':' + str(minute)
-    print(ctime.tm_hour, ':', ctime.tm_min)
-    print(timestr)
-    if alarm:
-        set_alarm(timestr)
-    return timestr
 
 #sa = set alarm //// sd = set date
 def set_alarm(salarm, sdate):
@@ -95,41 +124,49 @@ def set_alarm(salarm, sdate):
 				minutes = minutes + 1440
 		
 		print("Wake up")
+		dl.build()
+		#SLEEP controls the speed of the leds
+		#MSTART indicates when the beeping starts
+		dl.start(SLEEP= 0.1, MSTART= 25)
+		print('in loop')
 		
-		t1_stop= threading.Event()
-		threading.Thread(target=lights, args=(1, t1_stop)).start()
-		
-		while(GPIO.input(ir)==1):
-		#for i in range(12):
+		stop = False
+		while dl.ir_approach():
 			print(chr(7))
-			mixer.music.play(start=0)
-			time.sleep(1.5)
-			mixer.music.rewind()
-			print(GPIO.input(ir))
-		print("we out")
-		mixer.music.stop()
-		t1_stop.set()
+			dl.one_time()
+			time.sleep(.01)
+			#print('btn is ', dl.btn_press())
+			stop = dl.btn_press()
+			if stop:
+				break
+		dl.clean_up()
+		
+		if not stop:
+			snooze_min = int(timelist[1]) + 1 #snooze time
+			snooze_hr = int(timelist[0])
+			if snooze_min > 59:
+				snooze_min -= 59 
+				snooze_hr += 1
+			if snooze_hr > 23:
+				snooze_hr -= 24
+			print(salarm)
+			print(str(snooze_hr) + ':' + str(snooze_min))
+			new_time = str(snooze_hr) + ':' + str(snooze_min)
+			set_alarm(new_time, sdate)
+		print('stopped')
+		
+		
 			
 	except KeyboardInterrupt:
 		print("Interrupted by user")
 		mixer.music.stop()
-		t1_stop.set()
+		dl.clean_up()
 		sys.exit(1)
 
-
-def lights(arg1, stop_event):
-	i = 0
-	while not stop_event.is_set():
-		print("we in")
-		time.sleep(.3)
-		while(i < 100):
-			led.pwm_led(SLEEP=.20,dc=i)
-			time.sleep(.01)
-			i = i +1
-			print(i)
-			break
+	return -1
 # EOF
 #set_alarm('15:03','2018-03-12')
 
 #debug
-#set_alarm(str(time.localtime().tm_hour) + ':' + str(time.localtime().tm_min),'2018-03-12')
+#set_alarm(str(time.localtime().tm_hour) + ':' + str(time.localtime().tm_min),'2018-03-17')
+#print(alarm_duration(u'PT3M'))
